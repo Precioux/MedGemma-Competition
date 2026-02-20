@@ -445,9 +445,9 @@ class QuantitativeAssessor:
         ollama_host: str = "127.0.0.1",
         chat_model: str = "alibayram/medgemma:latest",
         emb_model: str  = "dengcao/Qwen3-Embedding-8B:Q4_K_M",
-        pickle_path: str = "agents/chunk_8_step_2_participant_embedded_transcripts.pkl",
-        gt_train_csv: str = "agents/train_split_Depression_AVEC2017.csv",
-        gt_dev_csv: str   = "agents/dev_split_Depression_AVEC2017.csv",
+        pickle_path: str = "utils/chunk_8_step_2_participant_embedded_transcripts.pkl",
+        gt_train_csv: str = "utils/train_split_Depression_AVEC2017.csv",
+        gt_dev_csv: str   = "utils/dev_split_Depression_AVEC2017.csv",
         top_k: int = 3,
         dim: Optional[int] = None
     ):
