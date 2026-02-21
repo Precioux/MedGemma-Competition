@@ -119,9 +119,16 @@ class QualitativeAssessor:
             "http://localhost:11434/api/generate",
             json={
                 "model": self.model,
-                "prompt": prompt.strip()
+                "prompt": prompt.strip(),
+                "stream": True,
+                "options": {
+                    "num_predict": 1200,  # cap response length to prevent runaway generation
+                    "temperature": 0,
+                    "stop": ["</risk_factors>"]  # stop as soon as the last tag closes
+                }
             },
-            stream=True
+            stream=True,
+            timeout=180  # hard timeout to prevent infinite hang
         )
 
         full_response = ""
@@ -129,7 +136,8 @@ class QualitativeAssessor:
             if line:
                 chunk = line.decode("utf-8")
                 data = json.loads(chunk)
-                piece = data.get("response", "")
-                full_response += piece
+                full_response += data.get("response", "")
+                if data.get("done"):
+                    break
 
         return full_response

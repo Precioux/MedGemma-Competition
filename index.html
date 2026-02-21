@@ -1056,7 +1056,23 @@
     }
 
     document.getElementById('totalScore').textContent = `${total} / 24`;
-    document.getElementById('severityFill').style.width = `${Math.min((total / 24) * 100, 100)}%`;
+
+    // Color the severity fill based on score zone
+    const fill = document.getElementById('severityFill');
+    fill.style.width = `${Math.min((total / 24) * 100, 100)}%`;
+    if      (total <= 4)  fill.style.background = '#4caf50';
+    else if (total <= 9)  fill.style.background = '#8bc34a';
+    else if (total <= 14) fill.style.background = '#ffc107';
+    else if (total <= 19) fill.style.background = '#ff9800';
+    else                  fill.style.background = '#f44336';
+
+    // Show severity label under bar
+    const SCORE_LABELS = ['No Significant Symptoms', 'Mild', 'Moderate', 'Moderately Severe', 'Severe'];
+    const zoneIdx = total <= 4 ? 0 : total <= 9 ? 1 : total <= 14 ? 2 : total <= 19 ? 3 : 4;
+    const zoneColors = ['#4caf50','#8bc34a','#ffc107','#ff9800','#f44336'];
+    document.getElementById('totalScore').style.color = zoneColors[zoneIdx];
+    // Update severity text directly from score
+    document.getElementById('severityText').textContent = SCORE_LABELS[zoneIdx];
 
     // ---- Qualitative ----
     const qual = data.qualitative_result || '';
@@ -1148,33 +1164,55 @@
       .replace(/>/g, '&gt;');
   }
 
-  // Renders <overall>, <social>, <biological>, <notes>, <risks> as styled cards
+  // Renders qualitative output — handles markdown, XML tags, and ```xml fenced blocks
   function formatQualitative(text) {
-    // Handle XML tag format: <overall>, <social>, <biological>, <notes>, <risks>
+    // Strip markdown code fences (```xml ... ``` or ``` ... ```)
+    text = text.replace(/```(?:xml)?\s*/gi, '').replace(/```/g, '').trim();
+
     const SECTION_LABELS = {
       overall:    '🧠 Overall Impression',
       social:     '👥 Social Factors',
       biological: '🧬 Biological Factors',
       notes:      '📝 Additional Notes',
       risks:      '⚠️ Risk Factors',
+      assessment: '🧠 Assessment',
+      PHQ8_symptoms: '📋 PHQ-8 Symptoms',
+      social_factors: '👥 Social Factors',
+      biological_factors: '🧬 Biological Factors',
+      risk_factors: '⚠️ Risk Factors',
     };
 
     let html = text;
-    let usedXML = false;
 
+    // Strip exact_quotes tags but keep their content as inline quotes
+    html = html.replace(/<exact_quotes>([\s\S]*?)<\/exact_quotes>/gi, function(_, content) {
+      const quotes = content.trim();
+      if (!quotes || quotes.startsWith('<!--')) return '';
+      return '<div style="margin-top:8px;padding:8px 10px;border-left:2px solid rgba(79,158,255,0.3);font-style:italic;color:var(--text-dim);font-size:0.85em">' + quotes + '</div>';
+    });
+
+    // Strip XML comments
+    html = html.replace(/<!--[\s\S]*?-->/g, '');
+
+    // Replace known XML sections with styled cards (greedy to handle nested tags)
     Object.entries(SECTION_LABELS).forEach(([tag, label]) => {
-      const re = new RegExp('<' + tag + '>([\\s\\S]*?)<\\/' + tag + '>', 'gi');
-      if (re.test(html)) usedXML = true;
-      html = html.replace(new RegExp('<' + tag + '>([\\s\\S]*?)<\\/' + tag + '>', 'gi'), function(_, content) {
-        const body = renderMarkdownLight(content.trim());
-        return '<div style="margin-bottom:18px"><div style="font-size:0.65rem;letter-spacing:0.1em;color:var(--accent);margin-bottom:6px;font-weight:600">' + label + '</div><div style="color:var(--text-main);line-height:1.8">' + body + '</div></div>';
+      // Use greedy match to capture full section including any nested tags
+      const re = new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)<\\/' + tag + '\\s*>', 'gi');
+      html = html.replace(re, function(_, content) {
+        // Strip any remaining inner XML tags
+        const cleaned = content.replace(/<\/?[\w_\s]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+        if (!cleaned) return '';
+        const body = renderMarkdownLight(cleaned);
+        return '<div style="margin-bottom:18px;padding:12px 14px;background:rgba(79,158,255,0.04);border-left:2px solid var(--accent);border-radius:0 4px 4px 0">'
+          + '<div style="font-size:0.62rem;letter-spacing:0.1em;color:var(--accent);margin-bottom:8px;font-weight:700;text-transform:uppercase">' + label + '</div>'
+          + '<div style="color:var(--text-main);line-height:1.8">' + body + '</div></div>';
       });
     });
 
-    // Strip remaining XML tags
-    html = html.replace(/<\/?[\w_]+>/g, '');
+    // Strip any remaining XML tags
+    html = html.replace(/<\/?[\w_:]+[^>]*>/g, '');
 
-    // If it was plain markdown (no XML tags found), render it directly
+    // Render remaining markdown
     html = renderMarkdownLight(html);
 
     return html;
