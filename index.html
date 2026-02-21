@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Psychiatrist · Depression Assessment System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --surface: #0f1623;
+    --surface2: #151d2e;
+    --border: rgba(100, 160, 255, 0.12);
+    --accent: #4f9eff;
+    --accent2: #7ec8e3;
+    --gold: #d4a853;
+    --text: #c8d8f0;
+    --text-dim: #6b8ab0;
+    --text-bright: #e8f0ff;
+    --danger: #e05c5c;
+    --warn: #e09b3d;
+    --ok: #4ec994;
+    --glow: rgba(79, 158, 255, 0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 20%, rgba(30, 60, 120, 0.25) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(15, 40, 90, 0.2) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .noise {
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* === HEADER === */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 48px 60px 40px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .logo-block h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.9rem;
+    font-weight: 300;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .logo-block h1 em { font-style: italic; color: var(--accent2); }
+  .logo-block p {
+    margin-top: 6px;
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .badge-row { display: flex; gap: 10px; align-items: center; }
+  .badge {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .badge.gold {
+    border-color: rgba(212, 168, 83, 0.4);
+    color: var(--gold);
+    background: rgba(212, 168, 83, 0.06);
+  }
+
+  /* === HERO === */
+  .hero {
+    position: relative;
+    z-index: 10;
+    padding: 80px 60px 60px;
+    max-width: 900px;
+    animation: fadeUp 1s ease 0.2s both;
+  }
+  .hero-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hero-label::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+  .hero h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 400;
+    color: var(--text-bright);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 28px;
+  }
+  .hero h2 .italic { font-style: italic; color: var(--accent2); }
+  .hero p {
+    font-size: 0.82rem;
+    line-height: 1.8;
+    color: var(--text-dim);
+    max-width: 600px;
+  }
+
+  /* === METRICS === */
+  .metrics-row {
+    position: relative;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    padding: 0 2px 2px;
+    animation: fadeUp 1s ease 0.4s both;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px 28px;
+  }
+  .metric-card .m-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--text-bright);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .metric-card .m-val .m-unit { font-size: 1rem; color: var(--text-dim); }
+  .metric-card .m-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .metric-card .m-sub { font-size: 0.58rem; color: var(--text-dim); line-height: 1.5; }
+
+  /* === MAIN LAYOUT === */
+  .main {
+    position: relative;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 2px;
+    padding: 2px 2px 0;
+  }
+
+  .panel {
+    background: var(--surface);
+    padding: 36px 40px;
+    border: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .panel-title .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* === UPLOAD === */
+  .upload-zone {
+    border: 1px dashed rgba(100,160,255,0.25);
+    border-radius: 4px;
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background: rgba(79,158,255,0.02);
+  }
+  .upload-zone:hover {
+    border-color: rgba(100,160,255,0.5);
+    background: rgba(79,158,255,0.05);
+  }
+  .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(79,158,255,0.08);
+  }
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    z-index: 10;
+  }
+  .upload-icon { font-size: 2rem; margin-bottom: 14px; }
+  .upload-zone p { font-size: 0.72rem; color: var(--text-dim); line-height: 1.7; }
+  .upload-zone .hint { font-size: 0.62rem; color: rgba(107,138,176,0.6); margin-top: 8px; }
+
+  /* === PIPELINE STEPS === */
+  .steps { margin-top: 32px; display: flex; flex-direction: column; gap: 4px; }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    transition: all 0.4s ease;
+  }
+  .step.active { background: rgba(79,158,255,0.06); border-color: var(--border); }
+  .step.done { background: rgba(78,201,148,0.04); border-color: rgba(78,201,148,0.15); }
+  .step.error { background: rgba(224,92,92,0.04); border-color: rgba(224,92,92,0.2); }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: all 0.4s ease;
+  }
+  .step.active .step-num {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px rgba(79,158,255,0.3);
+    animation: pulse 1.5s infinite;
+  }
+  .step.done .step-num { background: var(--ok); border-color: var(--ok); color: #0a0f1a; }
+  .step.error .step-num { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+  .step-info { flex: 1; }
+  .step-name { font-size: 0.7rem; color: var(--text); margin-bottom: 2px; }
+  .step.active .step-name { color: var(--text-bright); }
+  .step-desc { font-size: 0.6rem; color: var(--text-dim); }
+  .step-status { font-size: 0.6rem; color: var(--text-dim); }
+  .step.done .step-status { color: var(--ok); }
+  .step.active .step-status { color: var(--accent); }
+  .step.error .step-status { color: var(--danger); }
+
+  /* === MODE TOGGLE === */
+  .mode-selector { margin-top: 28px; }
+  .mode-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .toggle-group { display: flex; gap: 8px; }
+  .toggle-btn {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .toggle-btn.active {
+    background: rgba(79,158,255,0.1);
+    border-color: rgba(79,158,255,0.4);
+    color: var(--accent);
+  }
+  .toggle-btn:hover:not(.active) { border-color: rgba(100,160,255,0.3); color: var(--text); }
+
+  /* === RUN BUTTON === */
+  .run-btn {
+    width: 100%;
+    margin-top: 24px;
+    padding: 16px;
+    background: var(--accent);
+    border: none;
+    color: #050a14;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .run-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.4s;
+  }
+  .run-btn:hover::before { left: 100%; }
+  .run-btn:hover { background: var(--accent2); }
+  .run-btn:disabled {
+    background: rgba(79,158,255,0.25);
+    cursor: not-allowed;
+    color: rgba(5,10,20,0.5);
+  }
+
+  /* === TRANSCRIPT VIEWER === */
+  .transcript-viewer {
+    height: 220px;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 20px;
+    font-size: 0.68rem;
+    line-height: 1.8;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(79,158,255,0.2) transparent;
+  }
+  .transcript-viewer::-webkit-scrollbar { width: 4px; }
+  .transcript-viewer::-webkit-scrollbar-thumb { background: rgba(79,158,255,0.2); border-radius: 2px; }
+
+  .dialogue-line { display: flex; gap: 10px; margin-bottom: 10px; }
+  .speaker {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+    height: fit-content;
+    margin-top: 2px;
+  }
+  .speaker.ellie { background: rgba(126,200,227,0.1); color: var(--accent2); border: 1px solid rgba(126,200,227,0.2); }
+  .speaker.patient { background: rgba(212,168,83,0.08); color: var(--gold); border: 1px solid rgba(212,168,83,0.2); }
+  .line-text { color: var(--text); font-size: 0.7rem; }
+
+  /* === RESULTS PANEL === */
+  .results-panel { display: flex; flex-direction: column; gap: 2px; }
+
+  .result-card {
+    background: var(--surface);
+    padding: 28px 32px;
+    border: 1px solid var(--border);
+  }
+
+  .result-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 0.55rem;
+  }
+  .tag-q { background: rgba(79,158,255,0.1); color: var(--accent); border: 1px solid rgba(79,158,255,0.2); }
+  .tag-qual { background: rgba(126,200,227,0.1); color: var(--accent2); border: 1px solid rgba(126,200,227,0.2); }
+  .tag-meta { background: rgba(212,168,83,0.1); color: var(--gold); border: 1px solid rgba(212,168,83,0.2); }
+
+  /* PHQ-8 Grid */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .score-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 14px 10px;
+    text-align: center;
+    border-radius: 3px;
+  }
+  .score-item .score-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .score-item .score-key { font-size: 0.55rem; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; }
+
+  /* Severity bar */
+  .severity-bar { margin: 16px 0; }
+  .severity-track {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+  }
+  .severity-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(90deg, var(--ok), var(--warn), var(--danger));
+  }
+  .severity-labels { display: flex; justify-content: space-between; font-size: 0.55rem; color: var(--text-dim); }
+
+  /* Diagnosis badge */
+  .diagnosis-row { display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .diag-badge {
+    padding: 8px 20px;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .diag-badge.positive { background: rgba(224,92,92,0.1); color: var(--danger); border: 1px solid rgba(224,92,92,0.3); }
+  .diag-badge.negative { background: rgba(78,201,148,0.1); color: var(--ok); border: 1px solid rgba(78,201,148,0.3); }
+  .diag-badge.unknown { background: rgba(107,138,176,0.1); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* Scrollable text */
+  .qual-text {
+    font-size: 0.7rem;
+    line-height: 1.9;
+    color: var(--text);
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(79,158,255,0.15) transparent;
+    padding-right: 8px;
+  }
+  .qual-text::-webkit-scrollbar { width: 3px; }
+  .qual-text::-webkit-scrollbar-thumb { background: rgba(79,158,255,0.2); border-radius: 2px; }
+
+  .xml-tag { color: var(--accent2); }
+
+  /* Qualitative evaluation scores */
+  .eval-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+  .eval-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px;
+    text-align: center;
+    border-radius: 3px;
+  }
+  .eval-item .e-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--text-bright);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .eval-item .e-key { font-size: 0.55rem; letter-spacing: 0.08em; color: var(--text-dim); text-transform: uppercase; }
+
+  /* Placeholder */
+  .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; gap: 16px; }
+  .placeholder .ph-icon { font-size: 2.5rem; opacity: 0.3; }
+  .placeholder p { font-size: 0.68rem; color: var(--text-dim); line-height: 1.7; max-width: 280px; }
+
+  /* === CONSOLE === */
+  .console-panel {
+    position: relative;
+    z-index: 10;
+    margin: 2px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .console-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+  }
+  .console-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .c-red { background: #ff5f57; }
+  .c-yellow { background: #febc2e; }
+  .c-green { background: #28c840; }
+  .console-title { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); margin-left: 8px; }
+
+  .console-body {
+    padding: 20px;
+    max-height: 180px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(79,158,255,0.1) transparent;
+  }
+  .log-line { font-size: 0.65rem; line-height: 1.7; color: var(--text-dim); display: flex; gap: 12px; }
+  .log-time { color: rgba(107,138,176,0.5); white-space: nowrap; }
+  .log-msg.info { color: var(--text-dim); }
+  .log-msg.success { color: var(--ok); }
+  .log-msg.error { color: var(--danger); }
+  .log-msg.step { color: var(--accent); }
+  .log-msg.warn { color: var(--warn); }
+
+  /* === FOOTER === */
+  footer {
+    position: relative;
+    z-index: 10;
+    padding: 28px 60px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+  }
+  footer p { font-size: 0.62rem; color: var(--text-dim); letter-spacing: 0.05em; }
+  .model-info { display: flex; gap: 20px; align-items: center; }
+  .model-tag { font-size: 0.6rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+  .model-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 8px rgba(79,158,255,0.3); } 50% { box-shadow: 0 0 18px rgba(79,158,255,0.7); } }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 1.5px solid rgba(79,158,255,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  /* Error banner */
+  .error-banner {
+    background: rgba(224,92,92,0.08);
+    border: 1px solid rgba(224,92,92,0.3);
+    color: var(--danger);
+    padding: 16px 20px;
+    font-size: 0.7rem;
+    line-height: 1.6;
+    border-radius: 3px;
+    margin-top: 16px;
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+    .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    .score-grid { grid-template-columns: repeat(4, 1fr); }
+    header, .hero { padding-left: 24px; padding-right: 24px; }
+    footer { flex-direction: column; gap: 16px; text-align: center; padding: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-block">
+    <h1><em>AI</em> Psychiatrist</h1>
+    <p>Multi-Agent Depression Assessment · MedGemma</p>
+  </div>
+  <div class="badge-row">
+    <span class="badge gold">Competition Entry</span>
+    <span class="badge">v1.2.0</span>
+    <span class="badge">E-DAIC Dataset</span>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-label">Multi-Agent LLM Pipeline</div>
+  <h2>Clinical Depression Assessment<br>from <span class="italic">Interview Transcripts</span></h2>
+  <p>Upload a clinical interview transcript (CSV or TXT), select an assessment mode, and run the full AI pipeline — from PHQ-8 quantitative scoring to qualitative risk factor analysis and meta-reviewed diagnosis.</p>
+</div>
+
+<!-- METRICS ROW -->
+<div class="metrics-row">
+  <div class="metric-card">
+    <div class="m-label">Agents</div>
+    <div class="m-val">6</div>
+    <div class="m-sub">Interview Loader · Quant. Assessor · Qual. Assessor · Qual. Evaluator · Meta Reviewer</div>
+  </div>
+  <div class="metric-card">
+    <div class="m-label">Assessment Scale</div>
+    <div class="m-val">PHQ<span class="m-unit">-8</span></div>
+    <div class="m-sub">0–24 severity score across 8 clinical depression criteria</div>
+  </div>
+  <div class="metric-card">
+    <div class="m-label">Base Model</div>
+    <div class="m-val" style="font-size:1.3rem">Med<span class="m-unit">Gemma</span></div>
+    <div class="m-sub">Google's medical-domain fine-tuned LLM via Ollama</div>
+  </div>
+  <div class="metric-card">
+    <div class="m-label">Severity Levels</div>
+    <div class="m-val">5</div>
+    <div class="m-sub">None · Mild · Moderate · Mod. Severe · Severe</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: INPUT -->
+  <div class="panel" style="animation: fadeUp 0.8s ease 0.3s both;">
+    <div class="panel-title"><div class="dot"></div>Input & Configuration</div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".txt,.csv" onchange="handleFile(event)">
+      <div class="upload-icon">🗂️</div>
+      <p>Drop transcript file here<br>or click to browse</p>
+      <p class="hint">Supports .txt and .csv · E-DAIC format · UTF-8</p>
+    </div>
+
+    <div id="errorBanner" class="error-banner"></div>
+
+    <!-- Transcript Preview -->
+    <div id="transcriptPreview" style="display:none; margin-top:20px;">
+      <div class="panel-title" style="margin-bottom:12px;"><div class="dot" style="background:var(--gold);box-shadow:0 0 8px var(--gold);"></div>Transcript Preview</div>
+      <div class="transcript-viewer" id="transcriptContent"></div>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="mode-selector">
+      <div class="mode-label">Assessment Mode</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="modeZ" onclick="setMode(0)">Zero-Shot (Z)</button>
+        <button class="toggle-btn" id="modeF" onclick="setMode(1)">Few-Shot (F)</button>
+      </div>
+    </div>
+
+    <!-- Pipeline Steps -->
+    <div class="steps">
+      <div class="step" id="step0">
+        <div class="step-num">0</div>
+        <div class="step-info">
+          <div class="step-name">InterviewSimulator</div>
+          <div class="step-desc">Load & validate transcript</div>
+        </div>
+        <div class="step-status" id="st0">—</div>
+      </div>
+      <div class="step" id="step1">
+        <div class="step-num">1</div>
+        <div class="step-info">
+          <div class="step-name">QuantitativeAssessor</div>
+          <div class="step-desc">PHQ-8 item scoring</div>
+        </div>
+        <div class="step-status" id="st1">—</div>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-info">
+          <div class="step-name">QualitativeAssessor</div>
+          <div class="step-desc">Risk factor analysis</div>
+        </div>
+        <div class="step-status" id="st2">—</div>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-info">
+          <div class="step-name">QualitativeEvaluator</div>
+          <div class="step-desc">Assessment validation</div>
+        </div>
+        <div class="step-status" id="st3">—</div>
+      </div>
+      <div class="step" id="step4">
+        <div class="step-num">4</div>
+        <div class="step-info">
+          <div class="step-name">MetaReviewer</div>
+          <div class="step-desc">Final synthesis & diagnosis</div>
+        </div>
+        <div class="step-status" id="st4">—</div>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="runPipeline()" disabled>
+      Run Full Pipeline
+    </button>
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="results-panel">
+
+    <!-- Placeholder -->
+    <div id="placeholderPanel" class="panel" style="flex:1;display:flex;align-items:center;justify-content:center; animation: fadeUp 0.8s ease 0.5s both;">
+      <div class="placeholder">
+        <div class="ph-icon">🧠</div>
+        <p>Upload a clinical transcript and run the pipeline to view assessment results here.</p>
+      </div>
+    </div>
+
+    <!-- Live Results (hidden until run completes) -->
+    <div id="resultsContent" style="display:none; flex-direction:column; gap:2px; flex:1;">
+
+      <!-- Quantitative -->
+      <div class="result-card">
+        <div class="result-label">
+          <div style="width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);flex-shrink:0;"></div>
+          Quantitative PHQ-8 Assessment
+          <span class="tag tag-q" id="modeTag">Zero-Shot</span>
+          <span style="margin-left:auto;font-size:0.6rem;color:var(--text-dim)" id="execTime"></span>
+        </div>
+        <div class="score-grid" id="phqGrid"></div>
+        <div class="severity-bar">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:0.62rem;color:var(--text-dim)">PHQ-8 Total Score</span>
+            <span style="font-size:0.72rem;color:var(--text-bright)" id="totalScore">—</span>
+          </div>
+          <div class="severity-track"><div class="severity-fill" id="severityFill" style="width:0%"></div></div>
+          <div class="severity-labels">
+            <span>None (0–4)</span><span>Mild (5–9)</span><span>Mod (10–14)</span><span>Mod-Sev (15–19)</span><span>Severe (20–24)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Qualitative Assessment -->
+      <div class="result-card">
+        <div class="result-label">
+          <div style="width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2);flex-shrink:0;"></div>
+          Qualitative Risk Factor Analysis
+          <span class="tag tag-qual">Qualitative</span>
+        </div>
+        <div class="qual-text" id="qualText"></div>
+      </div>
+
+      <!-- Qualitative Evaluation Scores -->
+      <div class="result-card" id="evalCard" style="display:none;">
+        <div class="result-label">
+          <div style="width:5px;height:5px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex-shrink:0;"></div>
+          Assessment Quality Scores
+          <span class="tag" style="background:rgba(78,201,148,0.1);color:var(--ok);border:1px solid rgba(78,201,148,0.2);">Evaluator</span>
+        </div>
+        <div class="eval-grid" id="evalGrid"></div>
+      </div>
+
+      <!-- Meta Review -->
+      <div class="result-card">
+        <div class="result-label">
+          <div style="width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);flex-shrink:0;"></div>
+          Meta-Review · Final Diagnosis
+          <span class="tag tag-meta">MedGemma Synthesis</span>
+        </div>
+        <div class="diagnosis-row">
+          <div class="diag-badge unknown" id="diagBadge">—</div>
+          <div style="font-size:0.65rem;color:var(--text-dim)" id="severityText">—</div>
+        </div>
+        <div style="margin-top:16px;" class="qual-text" id="metaExplanation"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- CONSOLE LOG -->
+<div class="console-panel">
+  <div class="console-header">
+    <div class="console-dot c-red"></div>
+    <div class="console-dot c-yellow"></div>
+    <div class="console-dot c-green"></div>
+    <div class="console-title">Pipeline Log</div>
+  </div>
+  <div class="console-body" id="consoleBody">
+    <div class="log-line"><span class="log-time">00:00:00</span><span class="log-msg info">System ready. Upload a transcript to begin.</span></div>
+  </div>
+</div>
+
+<footer>
+  <p>AI Psychiatrist · Multi-Agent Depression Assessment via MedGemma · E-DAIC Clinical Data</p>
+  <div class="model-info">
+    <div class="model-tag">alibayram/medgemma:latest</div>
+    <div class="model-tag" style="font-size:0.6rem;">FastAPI · Ollama Inference</div>
+  </div>
+</footer>
+
+<script>
+  // ──────────────────────────────────────────────
+  //  State
+  // ──────────────────────────────────────────────
+  let currentMode = 0;
+  let fileReady = false;   // true once upload to server succeeds
+  let isRunning = false;
+
+  // ──────────────────────────────────────────────
+  //  Drag & drop
+  // ──────────────────────────────────────────────
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  });
+
+  function handleFile(e) {
+    const file = e.target.files[0];
+    if (file) processFile(file);
+  }
+
+  // ──────────────────────────────────────────────
+  //  File processing: preview locally + upload to server
+  // ──────────────────────────────────────────────
+  async function processFile(file) {
+    fileReady = false;
+    document.getElementById('runBtn').disabled = true;
+    hideError();
+
+    addLog(`Reading: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'info');
+
+    // 1. Local preview (instant)
+    const reader = new FileReader();
+    reader.onload = e => {
+      displayTranscript(e.target.result, file.name);
+    };
+    reader.readAsText(file);
+
+    // 2. Upload to server so the pipeline can read it
+    try {
+      addLog('Uploading transcript to server...', 'info');
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/upload_transcript', { method: 'POST', body: formData });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Server upload failed (${res.status}): ${err}`);
+      }
+
+      const data = await res.json();
+      addLog(`Uploaded → ${data.saved_to} · ${data.line_count} lines`, 'success');
+
+      // Update upload zone label
+      zone.querySelector('p').innerHTML =
+        `<strong style="color:var(--ok)">${file.name}</strong><br>` +
+        `<span style="color:var(--text-dim);font-size:0.65rem">${data.line_count} lines · ready for pipeline</span>`;
+
+      fileReady = true;
+      document.getElementById('runBtn').disabled = false;
+    } catch (err) {
+      showError(`Upload error: ${err.message}`);
+      addLog(`Upload failed: ${err.message}`, 'error');
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  Render transcript preview
+  // ──────────────────────────────────────────────
+  function displayTranscript(text, filename) {
+    const viewer = document.getElementById('transcriptContent');
+    document.getElementById('transcriptPreview').style.display = 'block';
+    viewer.innerHTML = '';
+
+    const lines = text.split('\n').filter(l => l.trim()).slice(0, 50);
+    lines.forEach(line => {
+      const ellieMatch  = line.match(/^Ellie[^:]*:\s*(.+)/i);
+      const patientMatch = line.match(/^(Patient|Participant)[^:]*:\s*(.+)/i);
+
+      if (ellieMatch) {
+        viewer.innerHTML += `<div class="dialogue-line"><span class="speaker ellie">Ellie</span><span class="line-text">${escHtml(ellieMatch[1])}</span></div>`;
+      } else if (patientMatch) {
+        viewer.innerHTML += `<div class="dialogue-line"><span class="speaker patient">Patient</span><span class="line-text">${escHtml(patientMatch[2])}</span></div>`;
+      } else {
+        viewer.innerHTML += `<div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:6px;">${escHtml(line)}</div>`;
+      }
+    });
+
+    const total = text.split('\n').length;
+    if (total > 50) {
+      viewer.innerHTML += `<div style="font-size:0.62rem;color:var(--text-dim);margin-top:12px;text-align:center;">... ${total - 50} more lines</div>`;
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  Mode toggle
+  // ──────────────────────────────────────────────
+  function setMode(m) {
+    currentMode = m;
+    document.getElementById('modeZ').classList.toggle('active', m === 0);
+    document.getElementById('modeF').classList.toggle('active', m === 1);
+    document.getElementById('modeTag').textContent = m === 0 ? 'Zero-Shot' : 'Few-Shot';
+    addLog(`Mode → ${m === 0 ? 'Zero-Shot (Z)' : 'Few-Shot (F)'}`, 'info');
+  }
+
+  // ──────────────────────────────────────────────
+  //  Run pipeline
+  // ──────────────────────────────────────────────
+  async function runPipeline() {
+    if (isRunning || !fileReady) return;
+    isRunning = true;
+    hideError();
+
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Running pipeline...';
+
+    // Reset steps
+    for (let i = 0; i <= 4; i++) setStep(i, '', '—');
+
+    // Show results area
+    document.getElementById('placeholderPanel').style.display = 'none';
+    document.getElementById('resultsContent').style.display = 'flex';
+    document.getElementById('evalCard').style.display = 'none';
+
+    addLog('─────────────────────────────', 'info');
+    addLog(`Pipeline started · Mode: ${currentMode === 0 ? 'Zero-Shot' : 'Few-Shot'}`, 'step');
+
+    setStep(0, 'active', 'loading...');
+
+    try {
+      // Animate steps while waiting (pipeline runs ~90 seconds)
+      const STEP_LABELS = [
+        '[STEP 0] InterviewSimulator → Transcript loaded',
+        '[STEP 1] QuantitativeAssessor → PHQ-8 scores generated',
+        '[STEP 2] QualitativeAssessor → Risk factors analyzed',
+        '[STEP 3] QualitativeEvaluator → Assessment validated',
+        '[STEP 4] MetaReviewer → Diagnosis synthesized',
+      ];
+      const STEP_DELAYS = [2000, 5000, 35000, 70000, 85000];
+      const stepTimers = STEP_DELAYS.map((delay, i) =>
+        setTimeout(() => {
+          setStep(i, 'done', 'done');
+          addLog(STEP_LABELS[i], 'success');
+          if (i < 4) setStep(i + 1, 'active', ['loading...','scoring...','assessing...','evaluating...','reviewing...'][i + 1]);
+        }, delay)
+      );
+
+      const res = await fetch('/full_pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: currentMode }),
+      });
+
+      stepTimers.forEach(t => clearTimeout(t));
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Mark all steps done
+      for (let i = 0; i <= 4; i++) { setStep(i, 'done', 'done'); addLog(STEP_LABELS[i], 'success'); }
+      addLog(`Pipeline complete · Duration: ${data.execution_time}`, 'success');
+      renderResults(data);
+
+    } catch (err) {
+      setStep(0, 'error', 'failed');
+      showError(`Pipeline error: ${err.message}`);
+      addLog(`Pipeline failed: ${err.message}`, 'error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Run Pipeline Again';
+    isRunning = false;
+  }
+
+  // ──────────────────────────────────────────────
+  //  Render results from API response
+  // ──────────────────────────────────────────────
+  function renderResults(data) {
+    // ---- Execution time ----
+    document.getElementById('execTime').textContent = `⏱ ${data.execution_time}`;
+    document.getElementById('modeTag').textContent = data.mode === 0 ? 'Zero-Shot' : 'Few-Shot';
+
+    // ---- PHQ-8 Scores ----
+    const PHQ_KEYS = [
+      ['PHQ8_NoInterest', 'Interest'],
+      ['PHQ8_Depressed',  'Mood'],
+      ['PHQ8_Sleep',      'Sleep'],
+      ['PHQ8_Tired',      'Fatigue'],
+      ['PHQ8_Appetite',   'Appetite'],
+      ['PHQ8_Failure',    'Self-worth'],
+      ['PHQ8_Concentrating', 'Focus'],
+      ['PHQ8_Moving',     'Psychomotor'],
+    ];
+
+    const qData = data.quantitative_score;
+    const grid  = document.getElementById('phqGrid');
+    grid.innerHTML = '';
+    let total = 0;
+
+    // Try to extract JSON from <answer> tags, or find raw JSON object in string
+    let parsedQ = null;
+    if (typeof qData === 'string') {
+      // Try <answer> tags first
+      const answerMatch = qData.match(/<answer>([\s\S]*?)<\/answer>/);
+      let jsonStr = answerMatch ? answerMatch[1].trim() : null;
+
+      // If no <answer> tags, find the first { ... } JSON block
+      if (!jsonStr) {
+        const jsonMatch = qData.match(/\{[\s\S]*\}/);
+        jsonStr = jsonMatch ? jsonMatch[0] : null;
+      }
+
+      if (jsonStr) {
+        try { parsedQ = JSON.parse(jsonStr); } catch(e) { parsedQ = null; }
+      }
+    } else if (typeof qData === 'object' && qData !== null) {
+      parsedQ = qData;
+    }
+
+    PHQ_KEYS.forEach(([key, label]) => {
+      let val;
+      if (parsedQ && parsedQ[key] !== undefined) {
+        const score = parsedQ[key].score;
+        val = (score === 'N/A' || score === null) ? 'N/A' : score;
+        if (typeof score === 'number') total += score;
+      } else {
+        val = 'N/A';
+      }
+
+      grid.innerHTML += `
+        <div class="score-item">
+          <div class="score-val" style="color:${scoreColor(val)}">${val}</div>
+          <div class="score-key">${label}</div>
+        </div>`;
+    });
+
+    // Total from _total field if available (few-shot)
+    if (typeof qData === 'object' && qData !== null && qData._total !== undefined) {
+      total = qData._total;
+    }
+
+    document.getElementById('totalScore').textContent = `${total} / 24`;
+    document.getElementById('severityFill').style.width = `${Math.min((total / 24) * 100, 100)}%`;
+
+    // ---- Qualitative ----
+    const qual = data.qualitative_result || '';
+    document.getElementById('qualText').innerHTML =
+      typeof qual === 'string' ? formatQualitative(qual) : JSON.stringify(qual, null, 2).replace(/\n/g, '<br>');
+
+    // ---- Qualitative Evaluation ----
+    const ev = data.qualitative_evaluation;
+    if (ev && typeof ev === 'object' && Object.keys(ev).length) {
+      const evalGrid = document.getElementById('evalGrid');
+      evalGrid.innerHTML = '';
+      ['coherence', 'completeness', 'accuracy', 'specificity'].forEach(k => {
+        const v = ev[k] !== null && ev[k] !== undefined ? ev[k] : '?';
+        evalGrid.innerHTML += `
+          <div class="eval-item">
+            <div class="e-val">${v}<span style="font-size:0.8rem;color:var(--text-dim)">/5</span></div>
+            <div class="e-key">${k}</div>
+          </div>`;
+      });
+      document.getElementById('evalCard').style.display = 'block';
+    }
+
+    // ---- Meta Review ----
+    const meta = data.meta_review || '';
+    const diagMatch = meta.match(/<diagnosis>\s*(\d+)\s*<\/diagnosis>/);
+    const sevMatch  = meta.match(/<severity>\s*(\d+)\s*<\/severity>/);
+    const expMatch  = meta.match(/<explanation>([\s\S]*?)<\/explanation>/);
+
+    const diag = diagMatch ? parseInt(diagMatch[1]) : null;
+    const sev  = sevMatch  ? parseInt(sevMatch[1])  : null;
+    const SEVERITY_LABELS = ['No Significant Symptoms', 'Mild Symptoms', 'Moderate Symptoms', 'Moderately Severe Symptoms', 'Severe Symptoms'];
+
+    const badge = document.getElementById('diagBadge');
+    if (diag === 1)      { badge.className = 'diag-badge positive'; badge.textContent = 'Depression Detected'; }
+    else if (diag === 0) { badge.className = 'diag-badge negative'; badge.textContent = 'No Depression Detected'; }
+    else                 { badge.className = 'diag-badge unknown';  badge.textContent = 'Diagnosis Pending'; }
+
+    document.getElementById('severityText').textContent = sev !== null ? (SEVERITY_LABELS[sev] || '') : '';
+    document.getElementById('metaExplanation').innerHTML =
+      expMatch ? expMatch[1].trim().replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>') : formatXML(meta);
+  }
+
+  // ──────────────────────────────────────────────
+  //  Helpers
+  // ──────────────────────────────────────────────
+  function setStep(n, state, statusText) {
+    const step = document.getElementById(`step${n}`);
+    const st   = document.getElementById(`st${n}`);
+    step.className = 'step ' + state;
+    st.textContent = statusText;
+    const numEl = step.querySelector('.step-num');
+    if (state === 'done')  numEl.textContent = '✓';
+    else if (state === 'error') numEl.textContent = '✕';
+    else numEl.textContent = String(n);
+  }
+
+  function addLog(msg, type = 'info') {
+    const body = document.getElementById('consoleBody');
+    const now  = new Date().toTimeString().split(' ')[0];
+    const el   = document.createElement('div');
+    el.className = 'log-line';
+    el.innerHTML = `<span class="log-time">${now}</span><span class="log-msg ${type}">${escHtml(msg)}</span>`;
+    body.appendChild(el);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function showError(msg) {
+    const b = document.getElementById('errorBanner');
+    b.textContent = msg;
+    b.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('errorBanner').style.display = 'none';
+  }
+
+  function scoreColor(val) {
+    if (val === 'N/A' || val === '?') return 'var(--text-dim)';
+    if (val === 0) return 'var(--ok)';
+    if (val === 1) return 'var(--accent2)';
+    if (val === 2) return 'var(--warn)';
+    return 'var(--danger)';
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  // Renders <overall>, <social>, <biological>, <notes>, <risks> as styled cards
+  function formatQualitative(text) {
+    // Handle XML tag format: <overall>, <social>, <biological>, <notes>, <risks>
+    const SECTION_LABELS = {
+      overall:    '🧠 Overall Impression',
+      social:     '👥 Social Factors',
+      biological: '🧬 Biological Factors',
+      notes:      '📝 Additional Notes',
+      risks:      '⚠️ Risk Factors',
+    };
+
+    let html = text;
+    let usedXML = false;
+
+    Object.entries(SECTION_LABELS).forEach(([tag, label]) => {
+      const re = new RegExp('<' + tag + '>([\\s\\S]*?)<\\/' + tag + '>', 'gi');
+      if (re.test(html)) usedXML = true;
+      html = html.replace(new RegExp('<' + tag + '>([\\s\\S]*?)<\\/' + tag + '>', 'gi'), function(_, content) {
+        const body = renderMarkdownLight(content.trim());
+        return '<div style="margin-bottom:18px"><div style="font-size:0.65rem;letter-spacing:0.1em;color:var(--accent);margin-bottom:6px;font-weight:600">' + label + '</div><div style="color:var(--text-main);line-height:1.8">' + body + '</div></div>';
+      });
+    });
+
+    // Strip remaining XML tags
+    html = html.replace(/<\/?[\w_]+>/g, '');
+
+    // If it was plain markdown (no XML tags found), render it directly
+    html = renderMarkdownLight(html);
+
+    return html;
+  }
+
+  // Light markdown renderer: bold, bullets, numbered lists, line breaks
+  function renderMarkdownLight(text) {
+    return text
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')   // **bold**
+      .replace(/^\s*\*\s+/gm, '• ')                          // * bullet → •
+      .replace(/^\s*[-]\s+/gm, '• ')                         // - bullet → •
+      .replace(/^\s*(\d+)\.\s+/gm, '<span style="color:var(--accent)">$1.</span> ')  // numbered
+      .replace(/\n{2,}/g, '</p><p style="margin:10px 0">')    // paragraph breaks
+      .replace(/\n/g, '<br>');
+  }
+
+  function formatXML(text) {
+    return escHtml(text)
+      .replace(/&lt;(\/?[\w_]+)&gt;/g, '<span class="xml-tag">&lt;$1&gt;</span>')
+      .replace(/\n/g, '<br>');
+  }
+</script>
+</body>
+</html>

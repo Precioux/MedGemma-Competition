@@ -4,7 +4,8 @@ langchain
 fastapi
 uvicorn
 pydantic
-fastapi
 requests
-
-
+python-multipart
+numpy
+pandas
+scikit-learn

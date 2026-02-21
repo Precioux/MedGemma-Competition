@@ -9,11 +9,12 @@ def parse_score_and_explanation(response_text):
     Extract score and explanation from model response
     """
     score_patterns = [
-        r'score[:\s]*(\d+)',
-        r'(\d+)[/\s]*(?:out of\s*)?10',
-        r'(\d+)[/\s]*10',
-        r'rating[:\s]*(\d+)',
-        r'^(\d+)',  # Number at start of line
+        r'score[:\s]*(\d+)',                          # Score: 4
+        r'(?:coherence|completeness|accuracy|specificity)[:\s]*(\d+)',  # Coherence: 4
+        r'rating[:\s]*(\d+)',                          # Rating: 4
+        r'^\s*(\d+)\s*$',                              # Lone digit on its own line
+        r'(\d+)[/\s]*(?:out of\s*)?5',                # 4/5 or 4 out of 5
+        r'^(\d+)',                                     # Number at start of line
     ]
 
     score = None
@@ -21,7 +22,7 @@ def parse_score_and_explanation(response_text):
         match = re.search(pattern, response_text, re.IGNORECASE | re.MULTILINE)
         if match:
             potential_score = int(match.group(1))
-            if 1 <= potential_score <= 10:
+            if 1 <= potential_score <= 5:
                 score = potential_score
                 break
 
@@ -37,95 +38,49 @@ class QualitativeEvaluatorAgent:
         result = {}
 
         # metric prompts
-        coherence_prompt = f"""Evaluate the following qualitative assessment output for COHERENCE only. Consider the qualitative assessment (qualitative_assessment) of the transcript (transcript) and compare qualitative_assessment to the provided transcript.
+        coherence_prompt = f"""Rate COHERENCE of this psychiatric assessment (1-5).
+Coherence: Is the assessment logically consistent with no contradictions?
+5=0 errors, 4=1-2, 3=3-4, 2=5-6, 1=7+
 
-            Coherence (1–5): Is the response logically consistent? Mistakes are logically inconsistent statements or contradictions within the assessment.
+Transcript: {transcript}
+Assessment: {qualitative_output}
 
-            Score from 1-5 solely based on the following criteria:
+Format:
+Explanation: [brief explanation]
+Score: [1-5]"""
 
-             - score of 5 : 0 mistakes
-             - score of 4 : 1-2 mistakes
-             - score of 3 : 3-4 mistakes
-             - score of 2 : 5-6 mistakes
-             - score of 1 : 7 or more mistakes
+        completeness_prompt = f"""Rate COMPLETENESS of this psychiatric assessment (1-5).
+Completeness: Does it cover all relevant PHQ-8 symptoms with frequency/severity?
+5=0 omissions, 4=1-2, 3=3-4, 2=5-6, 1=7+
 
-            Format your response as:
-            Explanation: [Your rating, as text]
-            Score: [your score, as a number between 1 and 5]
+Transcript: {transcript}
+Assessment: {qualitative_output}
 
-            ---
-            Here is the transcript:
-            {transcript}
+Format:
+Explanation: [brief explanation]
+Score: [1-5]"""
 
-            Here is the assessment based on the transcript:
-            {qualitative_output}
-            ---"""
-        completeness_prompt = f"""Evaluate the following qualitative assessment output for COMPLETENESS only. Compare qualitative_assessment to the provided transcript. Consider the qualitative assessment (qualitative_assessment) of the transcript (transcript) and compare qualitative_assessment to the provided transcript.
+        specificity_prompt = f"""Rate SPECIFICITY of this psychiatric assessment (1-5).
+Specificity: Are claims specific with evidence, not vague generalities?
+5=0 vague statements, 4=1-2, 3=3-4, 2=5-6, 1=7+
 
-        Completeness (1–5): Does the assessment cover all relevant symptoms, severities, duration/frequency? Mistakes are missed PHQ-8 symptoms, or duration/frequency details.
+Transcript: {transcript}
+Assessment: {qualitative_output}
 
-        Score from 1-5 solely based on the following criteria: 
-         - score of 5 : 0 mistakes
-         - score of 4 : 1-2 mistakes
-         - score of 3 : 3-4 mistakes
-         - score of 2 : 5-6 mistakes
-         - score of 1 : 7 or more mistakes
+Format:
+Explanation: [brief explanation]
+Score: [1-5]"""
 
-        Format your response as:
-        Explanation: [Your rating, as text]
-        Score: [your score, as a number between 1 and 5]
+        accuracy_prompt = f"""Rate ACCURACY of this psychiatric assessment (1-5).
+Accuracy: Are symptoms aligned with DSM-5/PHQ-8 criteria?
+5=0 errors, 4=1-2, 3=3-4, 2=5-6, 1=7+
 
-        Here is the transcript: 
-        {transcript}
+Transcript: {transcript}
+Assessment: {qualitative_output}
 
-        Here is the assessment based on the transcript: 
-        {qualitative_output}
-        ---"""
-        specificity_prompt = f"""Evaluate the following qualitative assessment output for SPECIFICITY only. Consider the qualitative assessment (qualitative_assessment) of the transcript (transcript) and compare qualitative_assessment to the provided transcript.
-
-        Specificity (1–5): Is the assessment specific? Mistakes include using vague/generic statements like 'the patient seems depressed'.
-
-        Score from 1-5 solely based on the following criteria: 
-         - score of 5 : 0 mistakes
-         - score of 4 : 1-2 mistakes
-         - score of 3 : 3-4 mistakes
-         - score of 2 : 5-6 mistakes
-         - score of 1 : 7 or more mistakes
-
-        Format your response as:
-        Explanation: [Your rating, as text]
-        Score: [your score, as a number between 1 and 5]
-
-        ---
-        Here is the transcript: 
-        {transcript}
-
-        Here is the assessment based on the transcript: 
-        {qualitative_output}
-        ---"""
-
-        accuracy_prompt = f"""Evaluate the following qualitative assessment output for ACCURACY only. Consider the qualitative assessment (qualitative_assessment) of the transcript (transcript) and compare qualitative_assessment to the provided transcript.
-
-        Accuracy (1–5): Are the signs/symptoms aligned with DSM-5 or PHQ-8? Mistakes are incorrect symptoms or incorrect duration/frequecy. 
-
-        Score from 1-5 solely based on the following criteria: 
-         - score of 5 : 0 mistakes
-         - score of 4 : 1-2 mistakes
-         - score of 3 : 3-4 mistakes
-         - score of 2 : 5-6 mistakes
-         - score of 1 : 7 or more mistakes
-
-        Format your response as:
-        Explanation: [Your rating, as text]
-        Score: [your score, as a number between 1 and 5]
-
-        ---
-        Here is the transcript: 
-        {transcript}
-
-        Here is the assessment based on the transcript: 
-        {qualitative_output}
-        ---"""
+Format:
+Explanation: [brief explanation]
+Score: [1-5]"""
 
         labels = ['coherence', 'completeness', 'accuracy', 'specificity']
         prompts = {
@@ -155,7 +110,7 @@ class QualitativeEvaluatorAgent:
             print(f"  Getting {label} response...")
             try:
                 print(request)
-                response = requests.post(self.endpoint, json=request, timeout=60)
+                response = requests.post(self.endpoint, json=request, timeout=180)
                 if response.status_code == 200:
                     responses.append(response)
                     content = response.json()['message']['content']

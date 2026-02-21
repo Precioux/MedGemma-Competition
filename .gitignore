@@ -1,0 +1,4 @@
+utils/*.pkl
+data/transcripts/uploaded_transcript.txt
+**/__pycache__/
+*.pyc
