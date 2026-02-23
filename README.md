@@ -13,7 +13,7 @@
 
 > 🎬 **[Watch the full demo video on YouTube](#)** ← replace with your YouTube link
 
-![Input and pipeline progress](data/1.png)
+![Input and pipeline progress](data/1_new.png)
 
 ![PHQ-8 quantitative scores](data/2.png)
 
